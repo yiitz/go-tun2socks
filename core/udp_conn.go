@@ -8,6 +8,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"unsafe"
@@ -27,8 +28,9 @@ type udpPacket struct {
 }
 
 type udpConn struct {
-	sync.Mutex
+	sync.RWMutex
 
+	connId    string
 	pcb       *C.struct_udp_pcb
 	handler   UDPConnHandler
 	localAddr *net.UDPAddr
@@ -36,10 +38,12 @@ type udpConn struct {
 	localPort C.u16_t
 	state     udpConnState
 	pending   chan *udpPacket
+	data      interface{}
 }
 
-func newUDPConn(pcb *C.struct_udp_pcb, handler UDPConnHandler, localIP C.ip_addr_t, localPort C.u16_t, localAddr, remoteAddr *net.UDPAddr) (UDPConn, error) {
+func newUDPConn(connId string, pcb *C.struct_udp_pcb, handler UDPConnHandler, localIP C.ip_addr_t, localPort C.u16_t, localAddr, remoteAddr *net.UDPAddr) (UDPConn, error) {
 	conn := &udpConn{
+		connId:    connId,
 		handler:   handler,
 		pcb:       pcb,
 		localAddr: localAddr,
@@ -83,8 +87,8 @@ func (conn *udpConn) LocalAddr() *net.UDPAddr {
 }
 
 func (conn *udpConn) checkState() error {
-	conn.Lock()
-	defer conn.Unlock()
+	conn.RLock()
+	defer conn.RUnlock()
 
 	switch conn.state {
 	case udpClosed:
@@ -100,8 +104,8 @@ func (conn *udpConn) checkState() error {
 // If the connection isn't ready yet, and there is room in the queue, make a copy
 // and hold onto it until the connection is ready.
 func (conn *udpConn) enqueueEarlyPacket(data []byte, addr *net.UDPAddr) bool {
-	conn.Lock()
-	defer conn.Unlock()
+	conn.RLock()
+	defer conn.RUnlock()
 	if conn.state == udpConnecting {
 		pkt := &udpPacket{data: append([]byte(nil), data...), addr: addr}
 		select {
@@ -123,7 +127,7 @@ func (conn *udpConn) ReceiveTo(data []byte, addr *net.UDPAddr) error {
 	}
 	err := conn.handler.ReceiveTo(conn, data, addr)
 	if err != nil {
-		return errors.New(fmt.Sprintf("write proxy failed: %v", err))
+		return errors.New(fmt.Sprint("write proxy failed: ", err))
 	}
 	return nil
 }
@@ -143,16 +147,31 @@ func (conn *udpConn) WriteFrom(data []byte, addr *net.UDPAddr) (int, error) {
 	buf := C.pbuf_alloc_reference(unsafe.Pointer(&data[0]), C.u16_t(len(data)), C.PBUF_ROM)
 	defer C.pbuf_free(buf)
 	C.udp_sendto(conn.pcb, buf, &conn.localIP, conn.localPort, &cremoteIP, C.u16_t(addr.Port))
+	item := udpConns.Get(conn.connId)
+	if item != nil {
+		item.Extend(udpIdleTimeout)
+	}
 	return len(data), nil
 }
 
 func (conn *udpConn) Close() error {
-	connId := udpConnId{
-		src: conn.LocalAddr().String(),
+	if err := conn.checkState(); err != nil {
+		return err
 	}
 	conn.Lock()
 	conn.state = udpClosed
 	conn.Unlock()
-	udpConns.Delete(connId)
+	udpConns.Delete(conn.connId)
+	if o, ok := conn.GetData().(io.Closer); ok {
+		o.Close()
+	}
 	return nil
+}
+
+func (conn *udpConn) SetData(data interface{}) {
+	conn.data = data
+}
+
+func (conn *udpConn) GetData() interface{} {
+	return conn.data
 }

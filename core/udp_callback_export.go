@@ -27,16 +27,15 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 		panic("invalid UDP address")
 	}
 
-	connId := udpConnId{
-		src: srcAddr.String(),
-	}
-	conn, found := udpConns.Load(connId)
-	if !found {
+	connId := srcAddr.String()
+	item := udpConns.Get(connId)
+	var conn UDPConn
+	if item == nil {
 		if udpConnHandler == nil {
 			panic("must register a UDP connection handler")
 		}
 		var err error
-		conn, err = newUDPConn(pcb,
+		conn, err = newUDPConn(connId, pcb,
 			udpConnHandler,
 			*addr,
 			port,
@@ -45,7 +44,10 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 		if err != nil {
 			return
 		}
-		udpConns.Store(connId, conn)
+		udpConns.Set(connId, conn, udpIdleTimeout)
+	} else {
+		item.Extend(udpIdleTimeout)
+		conn = item.Value()
 	}
 
 	var buf []byte
@@ -58,5 +60,5 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 		C.pbuf_copy_partial(p, unsafe.Pointer(&buf[0]), p.tot_len, 0)
 	}
 
-	conn.(UDPConn).ReceiveTo(buf[:totlen], dstAddr)
+	conn.ReceiveTo(buf[:totlen], dstAddr)
 }

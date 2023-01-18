@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/hex"
 	"net"
-	"sync"
 	"testing"
+
+	"github.com/karlseguin/ccache/v3"
 )
 
 const (
@@ -54,7 +55,7 @@ func setupUDP(t *testing.T) (LWIPStack, *fakeUDPHandler) {
 
 	// Reset the set of known UDP connections to empty before each test.  Otherwise, the
 	// tests will interfere with each other.
-	udpConns = sync.Map{}
+	udpConns = ccache.New(ccache.Configure[UDPConn]().MaxSize(128))
 
 	s := NewLWIPStack()
 	// This channel is buffered because the first Write->ReceiveTo can either be synchronous or

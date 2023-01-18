@@ -1,11 +1,25 @@
 package core
 
 import (
-	"sync"
+	"time"
+
+	"github.com/karlseguin/ccache/v3"
 )
 
-var udpConns sync.Map
+const udpIdleTimeout = time.Second * 45
 
-type udpConnId struct {
-	src string
+var udpConns = ccache.New(ccache.Configure[UDPConn]().MaxSize(4096).OnDelete(func(item *ccache.Item[UDPConn]) {
+	item.Value().Close()
+}))
+
+func init() {
+	go func() {
+		for {
+			time.Sleep(time.Second * 30)
+			now := time.Now()
+			udpConns.DeleteFunc(func(_ string, item *ccache.Item[UDPConn]) bool {
+				return now.After(item.Expires())
+			})
+		}
+	}()
 }

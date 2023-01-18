@@ -79,4 +79,7 @@ type UDPConn interface {
 
 	// Close closes the connection.
 	Close() error
+
+	SetData(d interface{})
+	GetData() interface{}
 }
