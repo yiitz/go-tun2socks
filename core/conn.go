@@ -1,6 +1,7 @@
 package core
 
 import (
+	"io"
 	"net"
 	"time"
 )
@@ -79,7 +80,17 @@ type UDPConn interface {
 
 	// Close closes the connection.
 	Close() error
+}
 
+type UDPConnEx interface {
+	// LocalAddr returns the local client network address.
+	UDPConn
 	SetData(d interface{})
 	GetData() interface{}
+}
+
+type BytesReader interface {
+	io.Reader
+	Len() int
+	Cap() int
 }

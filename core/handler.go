@@ -18,6 +18,10 @@ type UDPConnHandler interface {
 	// ReceiveTo will be called when data arrives from TUN.
 	ReceiveTo(conn UDPConn, data []byte, addr *net.UDPAddr) error
 }
+type UDPConnHandlerEx interface {
+	UDPConnHandler
+	ReceiveToBuffer(conn UDPConnEx, reader BytesReader, addr *net.UDPAddr) error
+}
 
 var tcpConnHandler TCPConnHandler
 var udpConnHandler UDPConnHandler

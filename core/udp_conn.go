@@ -8,7 +8,6 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"sync"
 	"unsafe"
@@ -38,7 +37,6 @@ type udpConn struct {
 	localPort C.u16_t
 	state     udpConnState
 	pending   chan *udpPacket
-	data      interface{}
 }
 
 func newUDPConn(connId string, pcb *C.struct_udp_pcb, handler UDPConnHandler, localIP C.ip_addr_t, localPort C.u16_t, localAddr, remoteAddr *net.UDPAddr) (UDPConn, error) {
@@ -162,16 +160,5 @@ func (conn *udpConn) Close() error {
 	conn.state = udpClosed
 	conn.Unlock()
 	udpConns.Delete(conn.connId)
-	if o, ok := conn.GetData().(io.Closer); ok {
-		o.Close()
-	}
 	return nil
-}
-
-func (conn *udpConn) SetData(data interface{}) {
-	conn.data = data
-}
-
-func (conn *udpConn) GetData() interface{} {
-	return conn.data
 }

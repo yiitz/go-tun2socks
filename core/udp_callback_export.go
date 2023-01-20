@@ -6,6 +6,7 @@ package core
 */
 import "C"
 import (
+	"io"
 	"unsafe"
 )
 
@@ -35,30 +36,90 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 			panic("must register a UDP connection handler")
 		}
 		var err error
-		conn, err = newUDPConn(connId, pcb,
-			udpConnHandler,
-			*addr,
-			port,
-			srcAddr,
-			dstAddr)
-		if err != nil {
-			return
+		if h2, ok := udpConnHandler.(UDPConnHandlerEx); ok {
+			conn, err = newUDPConnEx(connId, pcb,
+				h2,
+				*addr,
+				port,
+				srcAddr,
+				dstAddr)
+			if err != nil {
+				return
+			}
+		} else {
+			conn, err = newUDPConn(connId, pcb,
+				udpConnHandler,
+				*addr,
+				port,
+				srcAddr,
+				dstAddr)
+			if err != nil {
+				return
+			}
 		}
 		udpConns.Set(connId, conn, udpIdleTimeout)
 	} else {
 		item.Extend(udpIdleTimeout)
 		conn = item.Value()
 	}
-
-	var buf []byte
 	var totlen = int(p.tot_len)
-	if p.tot_len == p.len {
-		buf = (*[1 << 30]byte)(unsafe.Pointer(p.payload))[:totlen:totlen]
+	if connex, ok := conn.(*udpConnex); ok {
+		var pbr = &pbbufReader{p: p}
+		connex.ReceiveToBuffer(pbr, dstAddr)
 	} else {
-		buf = NewBytes(totlen)
-		defer FreeBytes(buf)
-		C.pbuf_copy_partial(p, unsafe.Pointer(&buf[0]), p.tot_len, 0)
+		var buf []byte
+		if p.tot_len == p.len {
+			buf = (*[1 << 30]byte)(unsafe.Pointer(p.payload))[:totlen:totlen]
+		} else {
+			buf = NewBytes(totlen)
+			defer FreeBytes(buf)
+			C.pbuf_copy_partial(p, unsafe.Pointer(&buf[0]), p.tot_len, 0)
+		}
+		conn.ReceiveTo(buf[:totlen], dstAddr)
 	}
 
-	conn.ReceiveTo(buf[:totlen], dstAddr)
+}
+
+type pbbufReader struct {
+	p      *C.struct_pbuf
+	offset int
+}
+
+func (me *pbbufReader) Read(buf []byte) (n int, err error) {
+	p := me.p
+	var totlen = int(p.tot_len)
+	left := totlen - me.offset
+	if left <= 0 {
+		return 0, io.EOF
+	}
+	if p.tot_len == p.len {
+		if left > len(buf) {
+			n = len(buf)
+			copy(buf, (*[1 << 30]byte)(unsafe.Pointer(p.payload))[me.offset:me.offset+n])
+			me.offset += n
+			return
+		}
+		n = left
+		copy(buf, (*[1 << 30]byte)(unsafe.Pointer(p.payload))[me.offset:me.offset+n])
+		me.offset += n
+		return
+	}
+	if left > len(buf) {
+		n = len(buf)
+		C.pbuf_copy_partial(p, unsafe.Pointer(&buf[0]), C.u16_t(n), C.u16_t(me.offset))
+		me.offset += n
+		return
+	}
+	n = left
+	C.pbuf_copy_partial(p, unsafe.Pointer(&buf[0]), C.u16_t(n), C.u16_t(me.offset))
+	me.offset += n
+	return
+}
+
+func (me *pbbufReader) Len() int {
+	return int(me.p.tot_len) - me.offset
+}
+
+func (me *pbbufReader) Cap() int {
+	return int(me.p.tot_len)
 }
