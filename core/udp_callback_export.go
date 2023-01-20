@@ -95,24 +95,21 @@ func (me *pbbufReader) Read(buf []byte) (n int, err error) {
 	if p.tot_len == p.len {
 		if left > len(buf) {
 			n = len(buf)
-			copy(buf, (*[1 << 30]byte)(unsafe.Pointer(p.payload))[me.offset:me.offset+n])
-			me.offset += n
-			return
+		} else {
+			n = left
 		}
-		n = left
 		copy(buf, (*[1 << 30]byte)(unsafe.Pointer(p.payload))[me.offset:me.offset+n])
 		me.offset += n
-		return
-	}
-	if left > len(buf) {
-		n = len(buf)
+	} else {
+		if left > len(buf) {
+			n = len(buf)
+			return
+		} else {
+			n = left
+		}
 		C.pbuf_copy_partial(p, unsafe.Pointer(&buf[0]), C.u16_t(n), C.u16_t(me.offset))
 		me.offset += n
-		return
 	}
-	n = left
-	C.pbuf_copy_partial(p, unsafe.Pointer(&buf[0]), C.u16_t(n), C.u16_t(me.offset))
-	me.offset += n
 	return
 }
 
