@@ -10,6 +10,11 @@ type TCPConnHandler interface {
 	Handle(conn net.Conn, target *net.TCPAddr) error
 }
 
+type TCPConnHandlerEx interface {
+	TCPConnHandler
+	HandleEx(conn TCPConnEx, target *net.TCPAddr) error
+}
+
 // UDPConnHandler handles UDP connections comming from TUN.
 type UDPConnHandler interface {
 	// Connect connects the proxy server. Note that target can be nil.

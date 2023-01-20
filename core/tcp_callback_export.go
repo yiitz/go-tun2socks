@@ -27,7 +27,18 @@ func tcpAcceptFn(arg unsafe.Pointer, newpcb *C.struct_tcp_pcb, err C.err_t) C.er
 		panic("must register a TCP connection handler")
 	}
 
-	if _, nerr := newTCPConn(newpcb, tcpConnHandler); nerr != nil {
+	if handler, ok := tcpConnHandler.(TCPConnHandlerEx); ok {
+		if _, nerr := newTCPConnEx(newpcb, handler); nerr != nil {
+			switch nerr.(*lwipError).Code {
+			case LWIP_ERR_ABRT:
+				return C.ERR_ABRT
+			case LWIP_ERR_OK:
+				return C.ERR_OK
+			default:
+				return C.ERR_CONN
+			}
+		}
+	} else if _, nerr := newTCPConn(newpcb, tcpConnHandler); nerr != nil {
 		switch nerr.(*lwipError).Code {
 		case LWIP_ERR_ABRT:
 			return C.ERR_ABRT
@@ -76,17 +87,22 @@ func tcpRecvFn(arg unsafe.Pointer, tpcb *C.struct_tcp_pcb, p *C.struct_pbuf, err
 		}
 	}
 
-	var buf []byte
-	var totlen = int(p.tot_len)
-	if p.tot_len == p.len {
-		buf = (*[1 << 30]byte)(unsafe.Pointer(p.payload))[:totlen:totlen]
+	var rerr error
+	if t, ok := conn.(*tcpConnEx); ok {
+		rerr = t.ReceiveBuffer(&pbbufReader{p: p})
 	} else {
-		buf = NewBytes(totlen)
-		defer FreeBytes(buf)
-		C.pbuf_copy_partial(p, unsafe.Pointer(&buf[0]), p.tot_len, 0)
+		var buf []byte
+		var totlen = int(p.tot_len)
+		if p.tot_len == p.len {
+			buf = (*[1 << 30]byte)(unsafe.Pointer(p.payload))[:totlen:totlen]
+		} else {
+			buf = NewBytes(totlen)
+			defer FreeBytes(buf)
+			C.pbuf_copy_partial(p, unsafe.Pointer(&buf[0]), p.tot_len, 0)
+		}
+		rerr = conn.(TCPConn).Receive(buf[:totlen])
 	}
 
-	rerr := conn.(TCPConn).Receive(buf[:totlen])
 	if rerr != nil {
 		switch rerr.(*lwipError).Code {
 		case LWIP_ERR_ABRT:

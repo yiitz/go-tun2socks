@@ -63,6 +63,17 @@ type TCPConn interface {
 	SetReadDeadline(t time.Time) error
 	SetWriteDeadline(t time.Time) error
 }
+type TCPConnEx interface {
+	TCPConn
+	SetPatch(p TCPConnPatch)
+	GetPatch() TCPConnPatch
+}
+
+type TCPConnPatch interface {
+	ReceiveEx(BytesReader) (int, error)
+	CloseReadPipe() error
+	CloseWritePipe() error
+}
 
 // TCPConn abstracts a UDP connection comming from TUN. This connection
 // should be handled by a registered UDP proxy handler.
