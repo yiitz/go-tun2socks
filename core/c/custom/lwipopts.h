@@ -114,4 +114,7 @@
 #define LWIP_STATS_DISPLAY 0
 #define LWIP_PERF 0
 
+// udp large packet support 
+#define IP_REASS_MAX_PBUFS 46
+
 #endif
