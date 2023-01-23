@@ -84,12 +84,11 @@ func (conn *udpConnex) WriteFrom(data []byte, addr *net.UDPAddr) (int, error) {
 }
 
 func (conn *udpConnex) Close() error {
-	if err := conn.checkState(); err != nil {
-		return err
-	}
-	udpConns.Delete(conn.connId)
-	if o, ok := conn.data.(io.Closer); ok {
-		o.Close()
+	if conn.closed.CompareAndSwap(false, true) {
+		udpConns.Delete(conn.connId)
+		if o, ok := conn.data.(io.Closer); ok {
+			o.Close()
+		}
 	}
 	return nil
 }

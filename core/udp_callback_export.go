@@ -7,6 +7,7 @@ package core
 import "C"
 import (
 	"io"
+	"strconv"
 	"unsafe"
 )
 
@@ -28,7 +29,7 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 		panic("invalid UDP address")
 	}
 
-	connId := srcAddr.String()
+	connId := ipAddrNTOA(*addr) + ":" + strconv.Itoa(int(uint16(port))) + "-" + ipAddrNTOA(*destAddr) + ":" + strconv.Itoa(int(uint16(destPort)))
 	item := udpConns.Get(connId)
 	var conn UDPConn
 	if item == nil {
@@ -103,7 +104,6 @@ func (me *pbbufReader) Read(buf []byte) (n int, err error) {
 	} else {
 		if left > len(buf) {
 			n = len(buf)
-			return
 		} else {
 			n = left
 		}
