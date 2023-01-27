@@ -29,7 +29,7 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 		panic("invalid UDP address")
 	}
 
-	connId := ipAddrNTOA(*addr) + ":" + strconv.Itoa(int(uint16(port))) + "-" + ipAddrNTOA(*destAddr) + ":" + strconv.Itoa(int(uint16(destPort)))
+	connId := ipAddrNTOA(*addr) + ":" + strconv.Itoa(int(uint16(port))) // + "-" + ipAddrNTOA(*destAddr) + ":" + strconv.Itoa(int(uint16(destPort)))
 	item := udpConns.Get(connId)
 	var conn UDPConn
 	if item == nil {

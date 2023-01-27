@@ -6,9 +6,10 @@ import (
 	"github.com/karlseguin/ccache/v3"
 )
 
-const udpIdleTimeout = time.Second * 45
+const udpIdleTimeout = time.Second * 300
 
-var udpConns = ccache.New(ccache.Configure[UDPConn]().MaxSize(4096).OnDelete(func(item *ccache.Item[UDPConn]) {
+// mac MaxSize = 4096 will crash
+var udpConns = ccache.New(ccache.Configure[UDPConn]().MaxSize(64).OnDelete(func(item *ccache.Item[UDPConn]) {
 	item.Value().Close()
 }))
 
