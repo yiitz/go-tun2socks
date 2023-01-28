@@ -1,19 +1,26 @@
 package core
 
 import (
+	"runtime"
 	"time"
 
 	"github.com/karlseguin/ccache/v3"
 )
 
-const udpIdleTimeout = time.Second * 300
+const udpIdleTimeout = time.Second * 60
 
 // mac MaxSize = 4096 will crash
-var udpConns = ccache.New(ccache.Configure[UDPConn]().MaxSize(64).OnDelete(func(item *ccache.Item[UDPConn]) {
-	item.Value().Close()
-}))
+var udpConns *ccache.Cache[UDPConn]
 
 func init() {
+	maxConnSize := int64(1024)
+	switch runtime.GOOS {
+	case "darwin", "ios":
+		maxConnSize = 192
+	}
+	udpConns = ccache.New(ccache.Configure[UDPConn]().MaxSize(maxConnSize).OnDelete(func(item *ccache.Item[UDPConn]) {
+		item.Value().Close()
+	}))
 	go func() {
 		for {
 			time.Sleep(time.Second * 30)
