@@ -12,7 +12,7 @@ type TCPConnHandler interface {
 
 type TCPConnHandlerEx interface {
 	TCPConnHandler
-	HandleEx(conn TCPConnEx, target *net.TCPAddr) error
+	HandleEx(conn TCPConnEx, target *net.TCPAddr) TCPConnPatch
 }
 
 // UDPConnHandler handles UDP connections comming from TUN.

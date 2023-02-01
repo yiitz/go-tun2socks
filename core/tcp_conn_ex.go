@@ -60,27 +60,11 @@ func newTCPConnEx(pcb *C.struct_tcp_pcb, handler TCPConnHandlerEx) (TCPConnEx, e
 	// Associate conn with key and save to the global map.
 	tcpConns.Store(connKey, conn)
 	conn.state = tcpConnecting
-	go func() {
-		err := handler.HandleEx(conn, conn.remoteAddr)
-		if err != nil {
-			conn.Abort()
-			return
-		} else {
-			conn.Lock()
-			if conn.state != tcpConnecting {
-				conn.Unlock()
-				return
-			}
-			conn.state = tcpConnected
-			conn.Unlock()
-
-			lwipMutex.Lock()
-			if pcb.refused_data != nil {
-				C.tcp_process_refused_data(pcb)
-			}
-			lwipMutex.Unlock()
-		}
-	}()
+	conn.patch = handler.HandleEx(conn, conn.remoteAddr)
+	conn.state = tcpConnected
+	if pcb.refused_data != nil {
+		C.tcp_process_refused_data(pcb)
+	}
 
 	return conn, NewLWIPError(LWIP_ERR_OK)
 }
@@ -343,7 +327,9 @@ func (conn *tcpConnEx) setLocalClosed() error {
 	}
 
 	// Causes the read half of the pipe returns.
-	conn.patch.CloseWritePipe()
+	if conn.patch != nil {
+		conn.patch.CloseWritePipe()
+	}
 
 	if conn.state == tcpWriteClosed {
 		conn.state = tcpClosing
