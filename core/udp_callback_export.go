@@ -47,6 +47,7 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 			if err != nil {
 				return
 			}
+			udpConns.Set(connId, conn, conn.(*udpConnex).idleTimeout)
 		} else {
 			conn, err = newUDPConn(connId, pcb,
 				udpConnHandler,
@@ -57,10 +58,14 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 			if err != nil {
 				return
 			}
+			udpConns.Set(connId, conn, udpIdleTimeout)
 		}
-		udpConns.Set(connId, conn, udpIdleTimeout)
 	} else {
-		item.Extend(udpIdleTimeout)
+		if connex, ok := conn.(*udpConnex); ok {
+			item.Extend(connex.idleTimeout)
+		} else {
+			item.Extend(udpIdleTimeout)
+		}
 		conn = item.Value()
 	}
 	var totlen = int(p.tot_len)

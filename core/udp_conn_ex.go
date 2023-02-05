@@ -10,18 +10,20 @@ import (
 	"io"
 	"net"
 	"sync/atomic"
+	"time"
 	"unsafe"
 )
 
 type udpConnex struct {
-	connId    string
-	pcb       *C.struct_udp_pcb
-	handler   UDPConnHandlerEx
-	localAddr *net.UDPAddr
-	localIP   C.ip_addr_t
-	localPort C.u16_t
-	closed    atomic.Bool
-	data      interface{}
+	connId      string
+	pcb         *C.struct_udp_pcb
+	handler     UDPConnHandlerEx
+	localAddr   *net.UDPAddr
+	localIP     C.ip_addr_t
+	localPort   C.u16_t
+	closed      atomic.Bool
+	data        interface{}
+	idleTimeout time.Duration
 }
 
 func newUDPConnEx(connId string, pcb *C.struct_udp_pcb, handler UDPConnHandlerEx, localIP C.ip_addr_t, localPort C.u16_t, localAddr, remoteAddr *net.UDPAddr) (UDPConn, error) {
@@ -32,6 +34,11 @@ func newUDPConnEx(connId string, pcb *C.struct_udp_pcb, handler UDPConnHandlerEx
 		localAddr: localAddr,
 		localIP:   localIP,
 		localPort: localPort,
+	}
+	if remoteAddr.Port == 53 {
+		conn.idleTimeout = dnsUdpIdleTimeout
+	} else {
+		conn.idleTimeout = udpIdleTimeout
 	}
 
 	err := handler.Connect(conn, remoteAddr)
@@ -78,7 +85,7 @@ func (conn *udpConnex) WriteFrom(data []byte, addr *net.UDPAddr) (int, error) {
 	C.udp_sendto(conn.pcb, buf, &conn.localIP, conn.localPort, &cremoteIP, C.u16_t(addr.Port))
 	item := udpConns.Get(conn.connId)
 	if item != nil {
-		item.Extend(udpIdleTimeout)
+		item.Extend(conn.idleTimeout)
 	}
 	return len(data), nil
 }

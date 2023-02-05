@@ -8,6 +8,7 @@ import (
 )
 
 const udpIdleTimeout = time.Second * 60
+const dnsUdpIdleTimeout = time.Second * 10
 
 // mac MaxSize = 4096 will crash
 var udpConns *ccache.Cache[UDPConn]
