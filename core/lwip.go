@@ -131,27 +131,21 @@ func (s *lwipStack) Close() error {
 	s.cancel()
 
 	// Abort and close all TCP and UDP connections.
-	tcpconns := make([]TCPConn, 10)
 	tcpConns.Range(func(_, c interface{}) bool {
-		tcpconns = append(tcpconns, c.(TCPConn))
+		switch conn := c.(type) {
+		case *tcpConn:
+			conn.Abort()
+		case *tcpConnEx:
+			conn.Abort()
+		}
 		return true
 	})
-	for _, conn := range tcpconns {
-		conn.Abort()
-	}
 
-	udpconns := make([]UDPConn, 10)
-	udpConns.ForEachFunc(func(_ string, item *ccache.Item[UDPConn]) bool {
-		// This only closes UDP connections in the core,
-		// UDP connections in the handler will wait till
-		// timeout, they are not closed immediately for
-		// now.
-		udpconns = append(udpconns, item.Value())
-		return true
-	})
-	for _, conn := range udpconns {
-		conn.Close()
-	}
+	// This only closes UDP connections in the core,
+	// UDP connections in the handler will wait till
+	// timeout, they are not closed immediately for
+	// now.
+	udpConns.DeleteFunc(func(key string, item *ccache.Item[UDPConn]) bool { return true })
 
 	// Remove callbacks and close listening pcbs.
 	lwipMutex.Lock()
