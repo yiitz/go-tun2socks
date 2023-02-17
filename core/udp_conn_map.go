@@ -7,8 +7,8 @@ import (
 	"github.com/karlseguin/ccache/v3"
 )
 
-const udpIdleTimeout = time.Second * 60
-const dnsUdpIdleTimeout = time.Second * 10
+var _udpIdleTimeout = time.Second * 60
+var _dnsUdpIdleTimeout = time.Second * 10
 
 // mac MaxSize = 4096 will crash
 var udpConns *ccache.Cache[UDPConn]
@@ -31,4 +31,16 @@ func init() {
 			})
 		}
 	}()
+}
+
+func SetUDPParams(maxConnSize int64, udpIdleTimeout, dnsUdpIdleTimeout time.Duration) {
+	if udpIdleTimeout > 0 {
+		_udpIdleTimeout = udpIdleTimeout
+	}
+	if dnsUdpIdleTimeout > 0 {
+		_dnsUdpIdleTimeout = dnsUdpIdleTimeout
+	}
+	if maxConnSize > 0 {
+		udpConns.SetMaxSize(maxConnSize)
+	}
 }

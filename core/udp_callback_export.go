@@ -58,13 +58,13 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 			if err != nil {
 				return
 			}
-			udpConns.Set(connId, conn, udpIdleTimeout)
+			udpConns.Set(connId, conn, _udpIdleTimeout)
 		}
 	} else {
 		if connex, ok := conn.(*udpConnex); ok {
 			item.Extend(connex.idleTimeout)
 		} else {
-			item.Extend(udpIdleTimeout)
+			item.Extend(_udpIdleTimeout)
 		}
 		conn = item.Value()
 	}

@@ -147,7 +147,7 @@ func (conn *udpConn) WriteFrom(data []byte, addr *net.UDPAddr) (int, error) {
 	C.udp_sendto(conn.pcb, buf, &conn.localIP, conn.localPort, &cremoteIP, C.u16_t(addr.Port))
 	item := udpConns.Get(conn.connId)
 	if item != nil {
-		item.Extend(udpIdleTimeout)
+		item.Extend(_udpIdleTimeout)
 	}
 	return len(data), nil
 }

@@ -36,9 +36,9 @@ func newUDPConnEx(connId string, pcb *C.struct_udp_pcb, handler UDPConnHandlerEx
 		localPort: localPort,
 	}
 	if remoteAddr.Port == 53 {
-		conn.idleTimeout = dnsUdpIdleTimeout
+		conn.idleTimeout = _dnsUdpIdleTimeout
 	} else {
-		conn.idleTimeout = udpIdleTimeout
+		conn.idleTimeout = _udpIdleTimeout
 	}
 
 	err := handler.Connect(conn, remoteAddr)
