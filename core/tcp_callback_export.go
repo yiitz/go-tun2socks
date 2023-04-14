@@ -157,7 +157,7 @@ func tcpErrFn(arg unsafe.Pointer, err C.err_t) {
 			// The connection was reset by the remote host
 			conn.(TCPConn).Err(errors.New("connection reseted"))
 		default:
-			conn.(TCPConn).Err(errors.New(fmt.Sprintf("lwip error code %v", int(err))))
+			conn.(TCPConn).Err(fmt.Errorf("lwip error code %v", int(err)))
 		}
 	}
 }
