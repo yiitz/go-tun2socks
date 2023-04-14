@@ -7,7 +7,10 @@ package core
 import "C"
 import (
 	"io"
+	"math"
+	"net"
 	"strconv"
+	"time"
 	"unsafe"
 )
 
@@ -23,19 +26,21 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 		return
 	}
 
-	srcAddr := ParseUDPAddr(ipAddrNTOA(*addr), uint16(port))
-	dstAddr := ParseUDPAddr(ipAddrNTOA(*destAddr), uint16(destPort))
-	if srcAddr == nil || dstAddr == nil {
+	srcIP := ipAddrNTOA(*addr)
+	destIP := ipAddrNTOA(*destAddr)
+	if srcIP == "" || destIP == "" {
 		panic("invalid UDP address")
 	}
+	dstAddr := ParseUDPAddr(net.JoinHostPort(destIP, strconv.Itoa(int(destPort))))
 
-	connId := ipAddrNTOA(*addr) + ":" + strconv.Itoa(int(uint16(port))) // + "-" + ipAddrNTOA(*destAddr) + ":" + strconv.Itoa(int(uint16(destPort)))
+	connId := net.JoinHostPort(srcIP, strconv.Itoa(int(port))) // + "-" + ipAddrNTOA(*destAddr) + ":" + strconv.Itoa(int(uint16(destPort)))
 	item := udpConns.Get(connId)
 	var conn UDPConn
 	if item == nil {
 		if udpConnHandler == nil {
 			panic("must register a UDP connection handler")
 		}
+		srcAddr := ParseUDPAddr(connId)
 		var err error
 		if h2, ok := udpConnHandler.(UDPConnHandlerEx); ok {
 			conn, err = newUDPConnEx(connId, pcb,
@@ -47,7 +52,7 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 			if err != nil {
 				return
 			}
-			udpConns.Set(connId, conn, conn.(*udpConnex).idleTimeout)
+			udpConns.Set(connId, conn, time.Duration(math.MaxInt64))
 		} else {
 			conn, err = newUDPConn(connId, pcb,
 				udpConnHandler,
@@ -58,14 +63,9 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 			if err != nil {
 				return
 			}
-			udpConns.Set(connId, conn, _udpIdleTimeout)
+			udpConns.Set(connId, conn, time.Duration(math.MaxInt64))
 		}
 	} else {
-		if connex, ok := conn.(*udpConnex); ok {
-			item.Extend(connex.idleTimeout)
-		} else {
-			item.Extend(_udpIdleTimeout)
-		}
 		conn = item.Value()
 	}
 	var totlen = int(p.tot_len)

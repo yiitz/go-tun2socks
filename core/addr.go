@@ -37,8 +37,8 @@ func ParseTCPAddr(addr string, port uint16) *net.TCPAddr {
 	return netAddr
 }
 
-func ParseUDPAddr(addr string, port uint16) *net.UDPAddr {
-	netAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(addr, strconv.Itoa(int(port))))
+func ParseUDPAddr(addr string) *net.UDPAddr {
+	netAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return nil
 	}
