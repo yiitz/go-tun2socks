@@ -71,7 +71,7 @@ func (conn *udpConnex) WriteFrom(data []byte, addr *net.UDPAddr) (int, error) {
 	}
 	// FIXME any memory leaks?
 	ipkey := UnsafeBytesToString(addr.IP)
-	ipitem, err := ipCache.Fetch(ipkey, _udpIdleTimeout, func() (unsafe.Pointer, error) {
+	ipitem, err := ipCache.Fetch(ipkey, ipCacheTimeout, func() (unsafe.Pointer, error) {
 		v := C.new_struct_ip_addr()
 		if v == nil {
 			return nil, errors.New("malloc struct_ip_addr failed")
@@ -84,7 +84,7 @@ func (conn *udpConnex) WriteFrom(data []byte, addr *net.UDPAddr) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	ipitem.Extend(_udpIdleTimeout)
+	ipitem.Extend(ipCacheTimeout)
 	buf := C.pbuf_alloc_reference(unsafe.Pointer(&data[0]), C.u16_t(len(data)), C.PBUF_ROM)
 	defer C.pbuf_free(buf)
 	C.udp_sendto(conn.pcb, buf, &conn.localIP, conn.localPort, (*C.struct_ip_addr)(ipitem.Value()), C.u16_t(addr.Port))
