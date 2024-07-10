@@ -353,7 +353,7 @@ func (conn *tcpConnEx) closeInternal() error {
 	if err == C.ERR_OK {
 		return nil
 	} else {
-		return errors.New(fmt.Sprintf("close TCP connection failed, lwip error code %d", int(err)))
+		return errors.New(fmt.Sprint("close TCP connection failed, lwip error code ", int(err)))
 	}
 }
 
