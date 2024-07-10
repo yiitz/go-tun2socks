@@ -250,7 +250,6 @@ func (conn *tcpConn) writeCheck() error {
 	default:
 		panic("unexpected error")
 	}
-	return nil
 }
 
 func (conn *tcpConn) Write(data []byte) (int, error) {
@@ -277,7 +276,7 @@ func (conn *tcpConn) Write(data []byte) (int, error) {
 				lwipMutex.Unlock()
 				return totalWritten, err
 			}
-			data = data[written:len(data)]
+			data = data[written:]
 		}
 		lwipMutex.Unlock()
 		if len(data) == 0 {
