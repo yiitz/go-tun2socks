@@ -40,6 +40,10 @@ package core
 //   ERR_ARG        = -16
 // } err_enum_t;
 
+import (
+	"strconv"
+)
+
 const (
 	LWIP_ERR_OK int = iota
 	LWIP_ERR_ABRT
@@ -56,5 +60,5 @@ func NewLWIPError(code int) error {
 }
 
 func (e *lwipError) Error() string {
-	return "error code " + string(e.Code)
+	return "error code " + strconv.Itoa(e.Code)
 }

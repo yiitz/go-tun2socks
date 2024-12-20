@@ -37,6 +37,8 @@ import (
 
 var tcpConns sync.Map
 
+var connKeyArgCounter uint32 = 1
+
 // We need such a key-value mechanism because when passing a Go pointer
 // to C, the Go pointer will only be valid during the call.
 // If we pass a Go pointer to tcp_arg(), this pointer will not be usable
@@ -62,4 +64,10 @@ func setConnKeyVal(p unsafe.Pointer, val uint32) {
 
 func getConnKeyVal(p unsafe.Pointer) uint32 {
 	return uint32(C.get_conn_key_val(p))
+}
+
+func getNextConnKeyVal() uint32 {
+	connKey := connKeyArgCounter
+	connKeyArgCounter += 1
+	return connKey
 }

@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -74,8 +73,8 @@ type tcpConn struct {
 
 func newTCPConn(pcb *C.struct_tcp_pcb, handler TCPConnHandler) (TCPConn, error) {
 	connKeyArg := newConnKeyArg()
-	connKey := rand.Uint32()
-	setConnKeyVal(unsafe.Pointer(connKeyArg), connKey)
+	connKey := getNextConnKeyVal()
+	setConnKeyVal(connKeyArg, connKey)
 
 	// Pass the key as arg for subsequent tcp callbacks.
 	C.tcp_arg(pcb, unsafe.Pointer(connKeyArg))

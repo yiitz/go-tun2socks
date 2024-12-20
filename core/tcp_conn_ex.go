@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -34,8 +33,8 @@ type tcpConnEx struct {
 
 func newTCPConnEx(pcb *C.struct_tcp_pcb, handler TCPConnHandlerEx) (TCPConnEx, error) {
 	connKeyArg := newConnKeyArg()
-	connKey := rand.Uint32()
-	setConnKeyVal(unsafe.Pointer(connKeyArg), connKey)
+	connKey := getNextConnKeyVal()
+	setConnKeyVal(connKeyArg, connKey)
 
 	// Pass the key as arg for subsequent tcp callbacks.
 	C.tcp_arg(pcb, unsafe.Pointer(connKeyArg))
@@ -124,7 +123,7 @@ func (conn *tcpConnEx) receiveCheck() error {
 }
 
 func (conn *tcpConnEx) Receive(data []byte) error {
-	panic("handle by ReceiveBuffer")
+	panic("handled by ReceiveBuffer")
 }
 
 func (conn *tcpConnEx) ReceiveBuffer(reader BytesReader) error {

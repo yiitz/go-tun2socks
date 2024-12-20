@@ -28,16 +28,8 @@ func tcpAcceptFn(arg unsafe.Pointer, newpcb *C.struct_tcp_pcb, err C.err_t) C.er
 	}
 
 	if handler, ok := tcpConnHandler.(TCPConnHandlerEx); ok {
-		if _, nerr := newTCPConnEx(newpcb, handler); nerr != nil {
-			switch nerr.(*lwipError).Code {
-			case LWIP_ERR_ABRT:
-				return C.ERR_ABRT
-			case LWIP_ERR_OK:
-				return C.ERR_OK
-			default:
-				return C.ERR_CONN
-			}
-		}
+		newTCPConnEx(newpcb, handler)
+		return C.ERR_OK
 	} else if _, nerr := newTCPConn(newpcb, tcpConnHandler); nerr != nil {
 		switch nerr.(*lwipError).Code {
 		case LWIP_ERR_ABRT:
