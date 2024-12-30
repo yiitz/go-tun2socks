@@ -374,6 +374,9 @@ func (conn *tcpConnEx) Abort() {
 	lwipMutex.Lock()
 	conn.checkState()
 	lwipMutex.Unlock()
+
+	// by yiitz release conn.Write canWrite.wait
+	conn.canWrite.Broadcast()
 }
 
 func (conn *tcpConnEx) Err(err error) {
