@@ -27,7 +27,7 @@ import (
 	"github.com/karlseguin/ccache/v3"
 )
 
-var ipCacheTimeout = time.Minute * 10
+var ipCacheTimeout = time.Minute
 
 var udpConns *ccache.Cache[UDPConn]
 
@@ -46,7 +46,7 @@ func init() {
 		C.free_struct_ip_addr(item.Value())
 	}))
 
-	t := time.NewTicker(ipCacheTimeout / 2)
+	t := time.NewTicker(time.Second * 10)
 	go func() {
 		for range t.C {
 			now := time.Now()
@@ -57,9 +57,12 @@ func init() {
 	}()
 }
 
-func SetUDPParams(maxConnSize int64) {
+func SetUDPParams(maxConnSize int64, ipCacheTimeoutParam time.Duration) {
 	if maxConnSize > 0 {
 		udpConns.SetMaxSize(maxConnSize)
 		ipCache.SetMaxSize(maxConnSize)
+	}
+	if ipCacheTimeout > 0 {
+		ipCacheTimeout = ipCacheTimeoutParam
 	}
 }
