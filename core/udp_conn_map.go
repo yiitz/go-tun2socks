@@ -40,7 +40,7 @@ func init() {
 		maxConnSize = 192
 	}
 	udpConns = ccache.New(ccache.Configure[UDPConn]().MaxSize(maxConnSize).OnDelete(func(item *ccache.Item[UDPConn]) {
-		item.Value().Close()
+		item.Value().CloseOnly()
 	}))
 	ipCache = ccache.New(ccache.Configure[unsafe.Pointer]().MaxSize(maxConnSize).OnDelete(func(item *ccache.Item[unsafe.Pointer]) {
 		C.free_struct_ip_addr(item.Value())
