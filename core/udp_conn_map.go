@@ -57,7 +57,7 @@ func init() {
 	}()
 }
 
-func SetUDPParams(maxConnSize int64, udpIdleTimeout, dnsUdpIdleTimeout time.Duration) {
+func SetUDPParams(maxConnSize int64) {
 	if maxConnSize > 0 {
 		udpConns.SetMaxSize(maxConnSize)
 		ipCache.SetMaxSize(maxConnSize)
