@@ -457,8 +457,11 @@ func (conn *tcpConn) LocalClosed() error {
 }
 
 func (conn *tcpConn) release() {
-	if tcpConns.Remove(conn.connKey) {
+	tcpConns.Remove(conn.connKey)
+	if conn.connKeyArg != nil {
+		setConnKeyVal(conn.connKeyArg, 0)
 		freeConnKeyArg(conn.connKeyArg)
+		conn.connKeyArg = nil
 	}
 	conn.sndPipeWriter.Close()
 	conn.sndPipeReader.Close()

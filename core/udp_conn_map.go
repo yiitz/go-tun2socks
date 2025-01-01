@@ -22,8 +22,8 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
-	"strings"
 	"time"
 	"unsafe"
 
@@ -50,13 +50,11 @@ func SetUDPParams(maxConnSize int, ipCacheTimeoutParam time.Duration) {
 		ipCacheTimeout = ipCacheTimeoutParam
 	}
 }
-func GetUDPConnStats() string {
-	var stats strings.Builder
-	fmt.Fprintf(&stats, "udp connection count: %d, list:\n", udpConns.Len())
+func WriteUDPConnStats(w io.Writer) {
+	fmt.Fprintf(w, "udp connection count: %d, list:\n", udpConns.Len())
 	for k, conn := range udpConns.Values() {
-		fmt.Fprintln(&stats, fmt.Sprintf("conn %d: ", k), conn.LocalAddr().String())
+		fmt.Fprintln(w, fmt.Sprintf("conn %d: ", k), conn.LocalAddr().String())
 	}
-	return stats.String()
 }
 
 func init() {

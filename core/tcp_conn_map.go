@@ -32,7 +32,7 @@ get_conn_key_val(void *arg)
 import "C"
 import (
 	"fmt"
-	"strings"
+	"io"
 	"unsafe"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -47,13 +47,11 @@ func SetTCPParams(maxConnSize int) {
 		tcpConns.Resize(maxConnSize)
 	}
 }
-func GetTCPConnStats() string {
-	var stats strings.Builder
-	fmt.Fprintf(&stats, "tcp connection count: %d, list:\n", tcpConns.Len())
+func WriteTCPConnStats(w io.Writer) {
+	fmt.Fprintf(w, "tcp connection count: %d, list:\n", tcpConns.Len())
 	for k, conn := range tcpConns.Values() {
-		fmt.Fprintln(&stats, fmt.Sprintf("conn %d: ", k), conn.LocalAddr().String(), " -> ", conn.RemoteAddr().String())
+		fmt.Fprintln(w, fmt.Sprintf("conn %d: ", k), conn.LocalAddr().String(), " -> ", conn.RemoteAddr().String())
 	}
-	return stats.String()
 }
 
 // We need such a key-value mechanism because when passing a Go pointer
@@ -92,6 +90,6 @@ func getNextConnKeyVal() uint32 {
 func init() {
 	maxConnSize := 1024
 	tcpConns, _ = lru.NewWithEvict(maxConnSize, func(key uint32, value TCPConn) {
-		value.Abort()
+		go value.Abort()
 	})
 }

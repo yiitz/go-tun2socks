@@ -394,9 +394,13 @@ func (conn *tcpConnEx) LocalClosed() error {
 }
 
 func (conn *tcpConnEx) release() {
-	if tcpConns.Remove(conn.connKey) {
+	tcpConns.Remove(conn.connKey)
+	if conn.connKeyArg != nil {
+		setConnKeyVal(conn.connKeyArg, 0)
 		freeConnKeyArg(conn.connKeyArg)
+		conn.connKeyArg = nil
 	}
+
 	conn.patch.CloseWritePipe()
 	conn.patch.CloseReadPipe()
 	conn.state = tcpClosed
