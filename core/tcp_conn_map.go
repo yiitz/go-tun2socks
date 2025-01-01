@@ -31,13 +31,30 @@ get_conn_key_val(void *arg)
 */
 import "C"
 import (
-	"sync"
+	"fmt"
+	"strings"
 	"unsafe"
+
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
-var tcpConns sync.Map
+var tcpConns *lru.Cache[uint32, TCPConn]
 
 var connKeyArgCounter uint32 = 1
+
+func SetTCPParams(maxConnSize int) {
+	if maxConnSize > 0 {
+		tcpConns.Resize(maxConnSize)
+	}
+}
+func GetTCPConnStats() string {
+	var stats strings.Builder
+	fmt.Fprintf(&stats, "tcp connection count: %d, list:\n", tcpConns.Len())
+	for k, conn := range tcpConns.Values() {
+		fmt.Fprintln(&stats, fmt.Sprintf("conn %d: ", k), conn.LocalAddr().String(), " -> ", conn.RemoteAddr().String())
+	}
+	return stats.String()
+}
 
 // We need such a key-value mechanism because when passing a Go pointer
 // to C, the Go pointer will only be valid during the call.
@@ -70,4 +87,11 @@ func getNextConnKeyVal() uint32 {
 	connKey := connKeyArgCounter
 	connKeyArgCounter += 1
 	return connKey
+}
+
+func init() {
+	maxConnSize := 1024
+	tcpConns, _ = lru.NewWithEvict(maxConnSize, func(key uint32, value TCPConn) {
+		value.Abort()
+	})
 }

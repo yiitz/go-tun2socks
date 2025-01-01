@@ -21,8 +21,9 @@ free_struct_ip_addr(void *arg)
 import "C"
 import (
 	"errors"
+	"fmt"
 	"net"
-	"runtime"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -49,13 +50,17 @@ func SetUDPParams(maxConnSize int, ipCacheTimeoutParam time.Duration) {
 		ipCacheTimeout = ipCacheTimeoutParam
 	}
 }
+func GetUDPConnStats() string {
+	var stats strings.Builder
+	fmt.Fprintf(&stats, "udp connection count: %d, list:\n", udpConns.Len())
+	for k, conn := range udpConns.Values() {
+		fmt.Fprintln(&stats, fmt.Sprintf("conn %d: ", k), conn.LocalAddr().String())
+	}
+	return stats.String()
+}
 
 func init() {
 	maxConnSize := 1024
-	switch runtime.GOOS {
-	case "darwin", "ios":
-		maxConnSize = 192
-	}
 	udpConns, _ = lru.NewWithEvict(maxConnSize, func(key string, value UDPConn) {
 		value.Close()
 	})

@@ -128,16 +128,13 @@ func (s *lwipStack) Close() error {
 	// Stop firing timer events.
 	s.cancel()
 
+	lwipMutex.Lock()
+	C.tcp_close(s.tpcb)
+	C.udp_remove(s.upcb)
+	lwipMutex.Unlock()
+
 	// Abort and close all TCP and UDP connections.
-	tcpConns.Range(func(_, c interface{}) bool {
-		switch conn := c.(type) {
-		case *tcpConn:
-			conn.Abort()
-		case *tcpConnEx:
-			conn.Abort()
-		}
-		return true
-	})
+	tcpConns.Purge()
 
 	// This only closes UDP connections in the core,
 	// UDP connections in the handler will wait till
@@ -148,8 +145,6 @@ func (s *lwipStack) Close() error {
 	lwipMutex.Lock()
 	C.tcp_accept(s.tpcb, nil)
 	C.udp_recv(s.upcb, nil, nil)
-	C.tcp_close(s.tpcb) // FIXME handle error
-	C.udp_remove(s.upcb)
 	lwipMutex.Unlock()
 
 	return nil

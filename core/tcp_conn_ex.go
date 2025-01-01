@@ -57,7 +57,7 @@ func newTCPConnEx(pcb *C.struct_tcp_pcb, handler TCPConnHandlerEx) (TCPConnEx, e
 	}
 
 	// Associate conn with key and save to the global map.
-	tcpConns.Store(connKey, conn)
+	tcpConns.Add(connKey, conn)
 	conn.state = tcpConnecting
 	conn.patch = handler.HandleEx(conn, conn.remoteAddr)
 	conn.state = tcpConnected
@@ -394,9 +394,8 @@ func (conn *tcpConnEx) LocalClosed() error {
 }
 
 func (conn *tcpConnEx) release() {
-	if _, found := tcpConns.Load(conn.connKey); found {
+	if tcpConns.Remove(conn.connKey) {
 		freeConnKeyArg(conn.connKeyArg)
-		tcpConns.Delete(conn.connKey)
 	}
 	conn.patch.CloseWritePipe()
 	conn.patch.CloseReadPipe()

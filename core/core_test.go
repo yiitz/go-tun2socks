@@ -55,8 +55,8 @@ func setupUDP(t *testing.T) (LWIPStack, *fakeUDPHandler) {
 
 	// Reset the set of known UDP connections to empty before each test.  Otherwise, the
 	// tests will interfere with each other.
-	udpConns, _ = lru.NewWithEvict[string, UDPConn](128, func(key string, value UDPConn) {
-		value.CloseOnly()
+	udpConns, _ = lru.NewWithEvict(128, func(key string, value UDPConn) {
+		value.Close()
 	})
 
 	s := NewLWIPStack()

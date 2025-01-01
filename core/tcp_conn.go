@@ -100,7 +100,7 @@ func newTCPConn(pcb *C.struct_tcp_pcb, handler TCPConnHandler) (TCPConn, error) 
 	}
 
 	// Associate conn with key and save to the global map.
-	tcpConns.Store(connKey, conn)
+	tcpConns.Add(connKey, conn)
 
 	// Connecting remote host could take some time, do it in another goroutine
 	// to prevent blocking the lwip thread.
@@ -457,9 +457,8 @@ func (conn *tcpConn) LocalClosed() error {
 }
 
 func (conn *tcpConn) release() {
-	if _, found := tcpConns.Load(conn.connKey); found {
+	if tcpConns.Remove(conn.connKey) {
 		freeConnKeyArg(conn.connKeyArg)
-		tcpConns.Delete(conn.connKey)
 	}
 	conn.sndPipeWriter.Close()
 	conn.sndPipeReader.Close()
