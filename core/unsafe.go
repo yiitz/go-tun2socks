@@ -2,7 +2,6 @@ package core
 
 import "C"
 import (
-	"reflect"
 	"unsafe"
 )
 
@@ -20,8 +19,6 @@ func UnsafeBytesToString(bs []byte) string {
 	return unsafe.String(&bs[0], len(bs))
 }
 
-func UnsafeStringToCharPtr(goStr string) *C.char {
-	// 获取字符串底层的指针
-	strHeader := (*reflect.StringHeader)(unsafe.Pointer(&goStr))
-	return (*C.char)(unsafe.Pointer(strHeader.Data))
+func UnsafeStringToCharPtr(s string) *C.char {
+	return (*C.char)(unsafe.Pointer(unsafe.StringData(s)))
 }
