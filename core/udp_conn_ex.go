@@ -11,7 +11,6 @@ import (
 	"io"
 	"net"
 	"sync/atomic"
-	"time"
 	"unsafe"
 )
 
@@ -71,20 +70,11 @@ func (conn *udpConnex) WriteFrom(data []byte, addr *net.UDPAddr) (int, error) {
 	if err = conn.checkState(); err != nil {
 		return 0, err
 	}
-	// FIXME any memory leaks?
-	ipkey := UnsafeBytesToString(addr.IP)
-	ipitem, ok := ipCache.Get(ipkey)
-	if !ok {
-		ipitem, err = newIpCacheItem(addr.IP)
-		if err != nil {
-			return 0, err
-		}
-		ipCache.Add(ipkey, ipitem)
-	}
-	ipitem.t = time.Now()
+	cremoteIP := C.struct_ip_addr{}
+	UnsafeGoIPToC(addr.IP, &cremoteIP)
 	buf := C.pbuf_alloc_reference(unsafe.Pointer(&data[0]), C.u16_t(len(data)), C.PBUF_ROM)
 	defer C.pbuf_free(buf)
-	C.udp_sendto(conn.pcb, buf, &conn.localIP, conn.localPort, (*C.struct_ip_addr)(ipitem.value), C.u16_t(addr.Port))
+	C.udp_sendto(conn.pcb, buf, &conn.localIP, conn.localPort, &cremoteIP, C.u16_t(addr.Port))
 	return len(data), nil
 }
 

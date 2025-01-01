@@ -137,11 +137,9 @@ func (conn *udpConn) WriteFrom(data []byte, addr *net.UDPAddr) (int, error) {
 	if err := conn.checkState(); err != nil {
 		return 0, err
 	}
-	// FIXME any memory leaks?
+
 	cremoteIP := C.struct_ip_addr{}
-	if err := ipAddrATON(addr.IP.String(), &cremoteIP); err != nil {
-		return 0, err
-	}
+	UnsafeGoIPToC(addr.IP, &cremoteIP)
 	buf := C.pbuf_alloc_reference(unsafe.Pointer(&data[0]), C.u16_t(len(data)), C.PBUF_ROM)
 	defer C.pbuf_free(buf)
 	C.udp_sendto(conn.pcb, buf, &conn.localIP, conn.localPort, &cremoteIP, C.u16_t(addr.Port))
