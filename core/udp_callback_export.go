@@ -49,6 +49,7 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 			if err != nil {
 				return
 			}
+			udpConns.Add(connId, conn)
 		} else {
 			conn, err = newUDPConn(connId, pcb,
 				udpConnHandler,
@@ -59,6 +60,7 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 			if err != nil {
 				return
 			}
+			udpConns.Add(connId, conn)
 		}
 	}
 	var totlen = int(p.tot_len)
