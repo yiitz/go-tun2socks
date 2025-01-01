@@ -91,9 +91,6 @@ type UDPConn interface {
 
 	// Close closes the connection.
 	Close() error
-
-	// Close closes the connection.
-	CloseOnly() error
 }
 
 type UDPConnEx interface {

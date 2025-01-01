@@ -57,7 +57,7 @@ func init() {
 		maxConnSize = 192
 	}
 	udpConns, _ = lru.NewWithEvict(maxConnSize, func(key string, value UDPConn) {
-		value.CloseOnly()
+		value.Close()
 	})
 	ipCache, _ = lru.NewWithEvict(maxConnSize, func(key string, value *ipCacheItem) {
 		C.free_struct_ip_addr(value.value)

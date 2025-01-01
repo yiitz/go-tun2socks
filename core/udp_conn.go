@@ -158,13 +158,3 @@ func (conn *udpConn) Close() error {
 	udpConns.Remove(conn.connId)
 	return nil
 }
-
-func (conn *udpConn) CloseOnly() error {
-	if err := conn.checkState(); err != nil {
-		return err
-	}
-	conn.Lock()
-	conn.state = udpClosed
-	conn.Unlock()
-	return nil
-}

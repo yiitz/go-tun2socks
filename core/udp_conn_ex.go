@@ -98,15 +98,6 @@ func (conn *udpConnex) Close() error {
 	return nil
 }
 
-func (conn *udpConnex) CloseOnly() error {
-	if conn.closed.CompareAndSwap(false, true) {
-		if o, ok := conn.data.(io.Closer); ok {
-			o.Close()
-		}
-	}
-	return nil
-}
-
 func (conn *udpConnex) SetData(data interface{}) {
 	conn.data = data
 }
