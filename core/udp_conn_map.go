@@ -34,8 +34,8 @@ var ipCacheTimeout = time.Minute
 var udpConns *lru.Cache[string, UDPConn]
 
 type ipCacheItem struct {
-	t     time.Time
 	value unsafe.Pointer
+	t     time.Time
 }
 
 var ipCache *lru.Cache[string, *ipCacheItem]
@@ -65,8 +65,7 @@ func init() {
 
 	t := time.NewTicker(time.Second * 10)
 	go func() {
-		for range t.C {
-			now := time.Now()
+		for now := range t.C {
 			for {
 				k, v, ok := ipCache.GetOldest()
 				if !ok {
