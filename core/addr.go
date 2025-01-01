@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net"
 	"strconv"
-	"unsafe"
 )
 
 // ipaddr_ntoa() is using a global static buffer to return result,
@@ -20,9 +19,7 @@ func ipAddrNTOA(ipaddr C.struct_ip_addr) string {
 }
 
 func ipAddrATON(cp string, addr *C.struct_ip_addr) error {
-	ccp := C.CString(cp)
-	defer C.free(unsafe.Pointer(ccp))
-	if r := C.ipaddr_aton(ccp, addr); r == 0 {
+	if r := C.ipaddr_aton(UnsafeStringToCharPtr(cp), addr); r == 0 {
 		return errors.New("failed to convert IP address")
 	} else {
 		return nil

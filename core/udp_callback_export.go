@@ -24,7 +24,7 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 		return
 	}
 
-	srcIP := ipAddrNTOA(*addr) // TODO 减少复制
+	srcIP := ipAddrNTOA(*addr)
 	destIP := ipAddrNTOA(*destAddr)
 	if srcIP == "" || destIP == "" {
 		panic("invalid UDP address")
