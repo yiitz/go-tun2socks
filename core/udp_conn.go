@@ -155,7 +155,7 @@ func (conn *udpConn) Close() error {
 	conn.Lock()
 	conn.state = udpClosed
 	conn.Unlock()
-	udpConns.Delete(conn.connId)
+	udpConns.Remove(conn.connId)
 	return nil
 }
 

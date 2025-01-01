@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"sync/atomic"
+	"time"
 	"unsafe"
 )
 
@@ -66,34 +67,30 @@ func (conn *udpConnex) WriteFrom(data []byte, addr *net.UDPAddr) (int, error) {
 	if len(data) == 0 {
 		return 0, nil
 	}
-	if err := conn.checkState(); err != nil {
+	var err error
+	if err = conn.checkState(); err != nil {
 		return 0, err
 	}
 	// FIXME any memory leaks?
 	ipkey := UnsafeBytesToString(addr.IP)
-	ipitem, err := ipCache.Fetch(ipkey, ipCacheTimeout, func() (unsafe.Pointer, error) {
-		v := C.new_struct_ip_addr()
-		if v == nil {
-			return nil, errors.New("malloc struct_ip_addr failed")
+	ipitem, ok := ipCache.Get(ipkey)
+	if !ok {
+		ipitem, err = newIpCacheItem(addr.IP)
+		if err != nil {
+			return 0, err
 		}
-		if err := ipAddrATON(addr.IP.String(), (*C.struct_ip_addr)(v)); err != nil {
-			return nil, err
-		}
-		return v, nil
-	})
-	if err != nil {
-		return 0, err
+		ipCache.Add(ipkey, ipitem)
 	}
-	ipitem.Extend(ipCacheTimeout)
+	ipitem.t = time.Now()
 	buf := C.pbuf_alloc_reference(unsafe.Pointer(&data[0]), C.u16_t(len(data)), C.PBUF_ROM)
 	defer C.pbuf_free(buf)
-	C.udp_sendto(conn.pcb, buf, &conn.localIP, conn.localPort, (*C.struct_ip_addr)(ipitem.Value()), C.u16_t(addr.Port))
+	C.udp_sendto(conn.pcb, buf, &conn.localIP, conn.localPort, (*C.struct_ip_addr)(ipitem.value), C.u16_t(addr.Port))
 	return len(data), nil
 }
 
 func (conn *udpConnex) Close() error {
 	if conn.closed.CompareAndSwap(false, true) {
-		udpConns.Delete(conn.connId)
+		udpConns.Remove(conn.connId)
 		if o, ok := conn.data.(io.Closer); ok {
 			o.Close()
 		}

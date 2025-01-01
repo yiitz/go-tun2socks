@@ -7,10 +7,8 @@ package core
 import "C"
 import (
 	"io"
-	"math"
 	"net"
 	"strconv"
-	"time"
 	"unsafe"
 )
 
@@ -26,7 +24,7 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 		return
 	}
 
-	srcIP := ipAddrNTOA(*addr)
+	srcIP := ipAddrNTOA(*addr) // TODO 减少复制
 	destIP := ipAddrNTOA(*destAddr)
 	if srcIP == "" || destIP == "" {
 		panic("invalid UDP address")
@@ -34,9 +32,8 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 	dstAddr := ParseUDPAddr(net.JoinHostPort(destIP, strconv.Itoa(int(destPort))))
 
 	connId := net.JoinHostPort(srcIP, strconv.Itoa(int(port))) // + "-" + ipAddrNTOA(*destAddr) + ":" + strconv.Itoa(int(uint16(destPort)))
-	item := udpConns.Get(connId)
-	var conn UDPConn
-	if item == nil {
+	conn, ok := udpConns.Get(connId)
+	if !ok {
 		if udpConnHandler == nil {
 			panic("must register a UDP connection handler")
 		}
@@ -52,7 +49,6 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 			if err != nil {
 				return
 			}
-			udpConns.Set(connId, conn, time.Duration(math.MaxInt64))
 		} else {
 			conn, err = newUDPConn(connId, pcb,
 				udpConnHandler,
@@ -63,10 +59,7 @@ func udpRecvFn(arg unsafe.Pointer, pcb *C.struct_udp_pcb, p *C.struct_pbuf, addr
 			if err != nil {
 				return
 			}
-			udpConns.Set(connId, conn, time.Duration(math.MaxInt64))
 		}
-	} else {
-		conn = item.Value()
 	}
 	var totlen = int(p.tot_len)
 	if connex, ok := conn.(*udpConnex); ok {

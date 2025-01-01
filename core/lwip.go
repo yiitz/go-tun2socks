@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 	"unsafe"
-
-	"github.com/karlseguin/ccache/v3"
 )
 
 const CHECK_TIMEOUTS_INTERVAL = 250 // in millisecond
@@ -145,8 +143,7 @@ func (s *lwipStack) Close() error {
 	// UDP connections in the handler will wait till
 	// timeout, they are not closed immediately for
 	// now.
-	udpConns.DeleteFunc(func(key string, item *ccache.Item[UDPConn]) bool { return true })
-
+	udpConns.Purge()
 	// Remove callbacks and close listening pcbs.
 	lwipMutex.Lock()
 	C.tcp_accept(s.tpcb, nil)

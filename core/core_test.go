@@ -6,7 +6,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/karlseguin/ccache/v3"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 const (
@@ -55,7 +55,9 @@ func setupUDP(t *testing.T) (LWIPStack, *fakeUDPHandler) {
 
 	// Reset the set of known UDP connections to empty before each test.  Otherwise, the
 	// tests will interfere with each other.
-	udpConns = ccache.New(ccache.Configure[UDPConn]().MaxSize(128))
+	udpConns, _ = lru.NewWithEvict[string, UDPConn](128, func(key string, value UDPConn) {
+		value.CloseOnly()
+	})
 
 	s := NewLWIPStack()
 	// This channel is buffered because the first Write->ReceiveTo can either be synchronous or

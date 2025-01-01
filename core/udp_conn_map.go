@@ -20,49 +20,74 @@ free_struct_ip_addr(void *arg)
 */
 import "C"
 import (
+	"errors"
+	"net"
 	"runtime"
 	"time"
 	"unsafe"
 
-	"github.com/karlseguin/ccache/v3"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 var ipCacheTimeout = time.Minute
 
-var udpConns *ccache.Cache[UDPConn]
+var udpConns *lru.Cache[string, UDPConn]
 
-var ipCache *ccache.Cache[unsafe.Pointer]
+type ipCacheItem struct {
+	t     time.Time
+	value unsafe.Pointer
+}
+
+var ipCache *lru.Cache[string, *ipCacheItem]
+
+func SetUDPParams(maxConnSize int, ipCacheTimeoutParam time.Duration) {
+	if maxConnSize > 0 {
+		udpConns.Resize(maxConnSize)
+		ipCache.Resize(maxConnSize)
+	}
+	if ipCacheTimeout > 0 {
+		ipCacheTimeout = ipCacheTimeoutParam
+	}
+}
 
 func init() {
-	maxConnSize := int64(1024)
+	maxConnSize := 1024
 	switch runtime.GOOS {
 	case "darwin", "ios":
 		maxConnSize = 192
 	}
-	udpConns = ccache.New(ccache.Configure[UDPConn]().MaxSize(maxConnSize).OnDelete(func(item *ccache.Item[UDPConn]) {
-		item.Value().CloseOnly()
-	}))
-	ipCache = ccache.New(ccache.Configure[unsafe.Pointer]().MaxSize(maxConnSize).OnDelete(func(item *ccache.Item[unsafe.Pointer]) {
-		C.free_struct_ip_addr(item.Value())
-	}))
+	udpConns, _ = lru.NewWithEvict(maxConnSize, func(key string, value UDPConn) {
+		value.CloseOnly()
+	})
+	ipCache, _ = lru.NewWithEvict(maxConnSize, func(key string, value *ipCacheItem) {
+		C.free_struct_ip_addr(value.value)
+	})
 
 	t := time.NewTicker(time.Second * 10)
 	go func() {
 		for range t.C {
 			now := time.Now()
-			ipCache.DeleteFunc(func(_ string, item *ccache.Item[unsafe.Pointer]) bool {
-				return now.After(item.Expires())
-			})
+			for {
+				k, v, ok := ipCache.GetOldest()
+				if !ok {
+					break
+				}
+				if v.t.Add(ipCacheTimeout).After(now) {
+					break
+				}
+				ipCache.Remove(k)
+			}
 		}
 	}()
 }
 
-func SetUDPParams(maxConnSize int64, ipCacheTimeoutParam time.Duration) {
-	if maxConnSize > 0 {
-		udpConns.SetMaxSize(maxConnSize)
-		ipCache.SetMaxSize(maxConnSize)
+func newIpCacheItem(ip net.IP) (*ipCacheItem, error) {
+	v := C.new_struct_ip_addr()
+	if v == nil {
+		return nil, errors.New("malloc struct_ip_addr failed")
 	}
-	if ipCacheTimeout > 0 {
-		ipCacheTimeout = ipCacheTimeoutParam
+	if err := ipAddrATON(ip.String(), (*C.struct_ip_addr)(v)); err != nil {
+		return nil, err
 	}
+	return &ipCacheItem{value: v}, nil
 }
